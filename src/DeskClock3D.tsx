@@ -45,7 +45,7 @@ export function DeskClock3D({ faceRight }: { faceRight: boolean }) {
       host.appendChild(webgl.domElement)
       const scene = new THREE.Scene()
       const camera = new THREE.OrthographicCamera(-2.6, 2.6, 1.8, -1.8, 0.1, 30)
-      camera.position.set(3.2, 5, 8)
+      camera.position.set(3.2, 6.6, 8)
       camera.lookAt(0, 0.9, 0)
       const room = new RoomEnvironment()
       const pmrem = new THREE.PMREMGenerator(webgl)
@@ -56,7 +56,7 @@ export function DeskClock3D({ faceRight }: { faceRight: boolean }) {
       pmrem.dispose()
       scene.add(new THREE.HemisphereLight(0xfff8e7, 0x554039, 0.9))
       const light = new THREE.DirectionalLight(0xffefdf, 1.8)
-      light.position.set(-3, 7, 5)
+      light.position.set(-4, 7, 5)
       scene.add(light)
 
       const geometries: THREE.BufferGeometry[] = []

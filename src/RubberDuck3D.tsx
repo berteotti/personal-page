@@ -89,7 +89,7 @@ export function RubberDuck3D({ squeak }: { squeak: number }) {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
     renderer.setClearColor(0x000000, 0)
     renderer.toneMapping = THREE.ACESFilmicToneMapping
-    renderer.toneMappingExposure = 1.05
+    renderer.toneMappingExposure = 1
     renderer.shadowMap.enabled = true
     renderer.shadowMap.type = THREE.PCFShadowMap
     renderer.domElement.className = 'duck-canvas'
@@ -97,20 +97,20 @@ export function RubberDuck3D({ squeak }: { squeak: number }) {
 
     const scene = new THREE.Scene()
     const camera = new THREE.OrthographicCamera(-1.65, 1.65, 1.65, -1.65, 0.1, 20)
-    camera.position.set(4.5, 5.4, -6)
+    camera.position.set(4.5, 6.1, -6)
     camera.lookAt(0, 1.1, 0)
 
     const room = new RoomEnvironment()
     const pmrem = new THREE.PMREMGenerator(renderer)
     const environment = pmrem.fromScene(room, 0.04)
     scene.environment = environment.texture
-    scene.environmentIntensity = 0.5
+    scene.environmentIntensity = 0.6
     room.dispose()
     pmrem.dispose()
 
-    scene.add(new THREE.HemisphereLight(0xfff7df, 0x66502d, 0.7))
-    const sunlight = new THREE.DirectionalLight(0xfff4df, 2.7)
-    sunlight.position.set(4, 8, -3)
+    scene.add(new THREE.HemisphereLight(0xfff8e7, 0x554039, 0.9))
+    const sunlight = new THREE.DirectionalLight(0xffefdf, 1.8)
+    sunlight.position.set(4, 7, -5)
     sunlight.castShadow = true
     sunlight.shadow.mapSize.set(512, 512)
     Object.assign(sunlight.shadow.camera, { left: -3, right: 3, top: 3, bottom: -3, near: 0.1, far: 15 })

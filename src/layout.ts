@@ -1,4 +1,4 @@
-export const itemIds = ['note', 'photo-01', 'postcard', 'duck', 'clock', 'calendar', 'notebook'] as const
+export const itemIds = ['note', 'photo-01', 'postcard', 'duck', 'clock', 'calendar', 'notebook', 'tv', 'bookstand'] as const
 export type ItemId = typeof itemIds[number]
 export type Point = { x: number; y: number }
 export type Size = { width: number; height: number }
@@ -8,25 +8,29 @@ export type Viewport = 'desktop' | 'mobile'
 const defaults: Record<Viewport, Layout> = {
   desktop: {
     positions: {
-      note: { x: 0.15, y: 0.58 },
-      'photo-01': { x: 0.725, y: 0.27 },
-      postcard: { x: 0.905, y: 0.705 },
-      duck: { x: 0.505, y: 0.025 },
+      note: { x: 0.13, y: 0.64 },
+      'photo-01': { x: 0.9, y: 0.33 },
+      postcard: { x: 0.87, y: 0.83 },
+      duck: { x: 0.507, y: 0.07 },
       clock: { x: 1, y: 0.005 },
       calendar: { x: 0, y: 0.02 },
-      notebook: { x: 0.51, y: 0.65 },
+      notebook: { x: 0.60, y: 0.38 },
+      tv: { x: 0.215, y: 0.005 },
+      bookstand: { x: 0.787, y: 0.025 },
     },
     order: [...itemIds],
   },
   mobile: {
     positions: {
-      note: { x: 0.5, y: 0.015 },
-      'photo-01': { x: 0.04, y: 0.35 },
-      postcard: { x: 0.65, y: 0.73 },
-      duck: { x: 0.78, y: 0.34 },
-      clock: { x: 0.55, y: 0.49 },
-      calendar: { x: 0.55, y: 0.61 },
-      notebook: { x: 0.45, y: 0.93 },
+      note: { x: 0.5, y: 0.16 },
+      'photo-01': { x: 0.18, y: 0.5 },
+      postcard: { x: 0.5, y: 0.96 },
+      duck: { x: 0.84, y: 0.48 },
+      clock: { x: 0.96, y: 0.017 },
+      calendar: { x: 0.04, y: 0.017 },
+      notebook: { x: 0.48, y: 0.7 },
+      tv: { x: 0.17, y: 0.81 },
+      bookstand: { x: 0.83, y: 0.81 },
     },
     order: [...itemIds],
   },
@@ -46,24 +50,22 @@ export function resetLayout(viewport: Viewport, area: Size, sizes: Record<ItemId
     layout.positions[id] = normalizePosition({ x, y }, area, sizes[id])
   }
 
-  if (viewport === 'mobile') {
-    const note = sizes.note
-    const photo = sizes['photo-01']
-    const gap = Math.min(40, Math.max(16, (area.height - note.height - photo.height - sizes.postcard.height - 156) / 2))
-    const edge = Math.max(8, area.width * 0.025)
-    const noteTop = 16
-    const photoTop = noteTop + note.height + gap
-    const clockTop = photoTop + Math.max(photo.height, sizes.duck.height) + gap
-    const calendarTop = clockTop + sizes.clock.height + gap
-    const secondTop = calendarTop + sizes.calendar.height + gap
-    place('note', (area.width - note.width) / 2, noteTop)
-    place('photo-01', edge, photoTop)
-    place('duck', area.width - sizes.duck.width - edge, noteTop + note.height + gap / 2)
-    place('clock', (area.width - sizes.clock.width) / 2, clockTop)
-    place('calendar', (area.width - sizes.calendar.width) / 2, calendarTop)
-    place('postcard', (area.width - sizes.postcard.width) / 2, secondTop)
-    place('notebook', (area.width - sizes.notebook.width) / 2, secondTop + sizes.postcard.height + gap)
-  }
+  const gap = area.width * 0.11
+  const edge = area.width * 0.025
+  const noteTop = 24 + Math.max(sizes.calendar.height, sizes.clock.height) + gap * 0.55
+  const photoTop = noteTop + sizes.note.height + gap
+  const notebookTop = photoTop + Math.max(sizes['photo-01'].height, sizes.duck.height) + gap * 1.5
+  place('calendar', edge, 24)
+  place('clock', area.width - sizes.clock.width - edge, 24)
+  place('note', (area.width - sizes.note.width) / 2, noteTop)
+  place('photo-01', area.width * 0.12, photoTop)
+  place('duck', area.width - sizes.duck.width - area.width * 0.12, photoTop + gap / 2)
+  place('notebook', (area.width - sizes.notebook.width) * 0.48, notebookTop)
+  const tvTop = notebookTop + sizes.notebook.height + gap * 1.75
+  const rowInset = Math.min(area.width * 0.12, (area.width - sizes.tv.width - sizes.bookstand.width) / 3)
+  place('tv', rowInset, tvTop)
+  place('bookstand', area.width - sizes.bookstand.width - rowInset, tvTop)
+  place('postcard', (area.width - sizes.postcard.width) / 2, tvTop + Math.max(sizes.tv.height, sizes.bookstand.height) + gap * 3)
   return layout
 }
 

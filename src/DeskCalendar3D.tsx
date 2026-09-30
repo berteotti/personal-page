@@ -46,7 +46,7 @@ export function DeskCalendar3D({ faceRight }: { faceRight: boolean }) {
       const scene = new THREE.Scene()
       // Match the clock's projection, elevation, and left/right views.
       const camera = new THREE.OrthographicCamera(-2.6, 2.6, 1.8, -1.8, 0.1, 30)
-      camera.position.set(3.2, 5, 8)
+      camera.position.set(3.2, 6.6, 8)
       camera.lookAt(0, 0.9, 0)
       const room = new RoomEnvironment()
       const pmrem = new THREE.PMREMGenerator(webgl)
@@ -57,7 +57,7 @@ export function DeskCalendar3D({ faceRight }: { faceRight: boolean }) {
       pmrem.dispose()
       scene.add(new THREE.HemisphereLight(0xfff8e7, 0x554039, 0.9))
       const light = new THREE.DirectionalLight(0xffefdf, 1.8)
-      light.position.set(-3, 7, 5)
+      light.position.set(-4, 7, 5)
       light.castShadow = true
       light.shadow.mapSize.set(1024, 1024)
       light.shadow.camera.left = light.shadow.camera.bottom = -3

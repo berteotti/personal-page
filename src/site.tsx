@@ -10,8 +10,10 @@ import type { ItemId, Layout, Point, Size, Viewport } from './layout'
 import { RubberDuck3D } from './RubberDuck3D'
 import { DeskClock3D } from './DeskClock3D'
 import { DeskCalendar3D } from './DeskCalendar3D'
+import { Television3D } from './Television3D'
+import { BookStand3D } from './BookStand3D'
 
-const storageKey = (viewport: Viewport) => `personal-desk-layout-v1-${viewport}`
+const storageKey = (viewport: Viewport) => `personal-desk-layout-${viewport === 'mobile' ? 'v3' : 'v2'}-${viewport}`
 let squeakContext: AudioContext | undefined
 
 function squeakDuck() {
@@ -36,9 +38,11 @@ function squeakDuck() {
   oscillator.onended = () => { oscillator.disconnect(); filter.disconnect(); volume.disconnect() }
 }
 
-function readLayout(viewport: Viewport): Layout {
-  try { return parseLayout(localStorage.getItem(storageKey(viewport)), viewport) }
-  catch { return defaultLayout(viewport) }
+function readLayout(viewport: Viewport): Layout | null {
+  try {
+    const saved = localStorage.getItem(storageKey(viewport))
+    return !saved && viewport === 'mobile' ? null : parseLayout(saved, viewport)
+  } catch { return viewport === 'mobile' ? null : defaultLayout(viewport) }
 }
 
 function useViewport(): Viewport {
@@ -71,7 +75,6 @@ type DeskItemProps = {
   point: Point
   order: number
   viewport: Viewport
-  deskRef: RefObject<HTMLElement | null>
   deskSize: { width: number; height: number }
   onRaise: (id: ItemId) => void
   onMove: (id: ItemId, point: Point) => void
@@ -80,17 +83,53 @@ type DeskItemProps = {
   children: ReactNode
 }
 
-function DeskItem({ id, point, order, viewport, deskRef, deskSize, onRaise, onMove, onOpen, triggerRef, children }: DeskItemProps) {
+function DeskItem({ id, point, order, viewport, deskSize, onRaise, onMove, onOpen, triggerRef, children }: DeskItemProps) {
   const itemRef = useRef<HTMLDivElement>(null)
-  const trigger = useRef<HTMLButtonElement>(null)
   const itemSize = useSize(itemRef)
   const controls = useDragControls()
   const x = useMotionValue(0)
   const y = useMotionValue(0)
   const wasDragged = useRef(false)
+  const hold = useRef<{ timer?: ReturnType<typeof setTimeout>; origin?: Point; active: boolean }>({ active: false })
+  const [held, setHeld] = useState(false)
+  const [tvOn, setTvOn] = useState(false)
   const [dragSide, setDragSide] = useState<boolean | null>(null)
   const position = positionFor(point, deskSize, itemSize)
+  const limit = positionFor({ x: 1, y: 1 }, deskSize, itemSize)
   const faceRight = dragSide ?? (position.x + itemSize.width / 2 < deskSize.width / 2)
+
+  const cancelHold = () => {
+    clearTimeout(hold.current.timer)
+    hold.current = { active: false }
+    setHeld(false)
+  }
+
+  useEffect(() => {
+    const item = itemRef.current
+    const preventScroll = (event: TouchEvent) => {
+      if (hold.current.active && event.cancelable) event.preventDefault()
+    }
+    item?.addEventListener('touchmove', preventScroll, { passive: false })
+    return () => {
+      clearTimeout(hold.current.timer)
+      hold.current = { active: false }
+      item?.removeEventListener('touchmove', preventScroll)
+    }
+  }, [viewport])
+
+  const startHold = (event: PointerEvent<HTMLDivElement>) => {
+    wasDragged.current = false
+    if (viewport !== 'mobile' || !event.isPrimary || event.button !== 0) return
+    cancelHold()
+    hold.current.origin = { x: event.clientX, y: event.clientY }
+    hold.current.timer = setTimeout(() => {
+      hold.current.active = true
+      wasDragged.current = true
+      itemRef.current?.setPointerCapture(event.pointerId)
+      setHeld(true)
+      controls.start(event)
+    }, 300)
+  }
 
   useLayoutEffect(() => {
     x.set(0)
@@ -123,56 +162,46 @@ function DeskItem({ id, point, order, viewport, deskRef, deskSize, onRaise, onMo
   return (
     <motion.div
       ref={itemRef}
-      className={`desk-item desk-item--${id}`}
+      className={`desk-item desk-item--${id}${held ? ' is-held' : ''}`}
       style={{ left: position.x, top: position.y, zIndex: order + 1, x, y }}
       drag
       dragControls={controls}
       dragListener={viewport === 'desktop'}
-      dragConstraints={deskRef}
+      dragConstraints={{ left: -position.x, right: limit.x - position.x, top: -position.y, bottom: limit.y - position.y }}
       dragMomentum={false}
       dragElastic={0}
+      onPointerDown={startHold}
+      onPointerMove={event => {
+        const origin = hold.current.origin
+        if (!hold.current.active && origin && Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > 8) cancelHold()
+      }}
+      onPointerUp={cancelHold}
+      onPointerCancel={cancelHold}
+      onPointerLeave={() => { if (!hold.current.active) cancelHold() }}
+      onContextMenu={event => { if (viewport === 'mobile') event.preventDefault() }}
       onDragStart={() => { wasDragged.current = true; onRaise(id) }}
       onDrag={(_, info) => {
-        if (id === 'clock' || id === 'calendar') setDragSide(position.x + info.offset.x + itemSize.width / 2 < deskSize.width / 2)
+        if (id === 'clock' || id === 'calendar' || id === 'tv' || id === 'bookstand') setDragSide(position.x + info.offset.x + itemSize.width / 2 < deskSize.width / 2)
       }}
       onDragEnd={(_, info) => finishDrag(info.offset)}
       whileDrag={{ scale: 1.025, cursor: 'grabbing' }}
     >
       <button
-        ref={node => { trigger.current = node; triggerRef(id, node) }}
+        ref={node => triggerRef(id, node)}
         type="button"
         className="object-open"
-        aria-label={id === 'duck' ? 'Squeak rubber duck' : id === 'note' ? 'Open about me note' : id === 'notebook' ? 'Open My takes notebook' : undefined}
-        onPointerDown={() => { wasDragged.current = false }}
-        onKeyDown={viewport === 'desktop' ? handleKey : undefined}
+        aria-label={id === 'tv' ? 'Television power' : id === 'duck' ? 'Squeak rubber duck' : id === 'note' ? 'Open about me note' : id === 'notebook' ? 'Open My takes notebook' : undefined}
+        aria-pressed={id === 'tv' ? tvOn : undefined}
+        onKeyDown={handleKey}
         onClick={() => {
           if (wasDragged.current) { wasDragged.current = false; return }
+          if (id === 'tv') setTvOn(value => !value)
           onOpen(id)
         }}
-      >{id === 'clock' ? <DeskClock3D faceRight={faceRight} /> : id === 'calendar' ? <DeskCalendar3D faceRight={faceRight} /> : id === 'note' ? null : children}</button>
+      >{id === 'tv' ? <Television3D on={tvOn} faceRight={faceRight} /> : id === 'clock' ? <DeskClock3D faceRight={faceRight} /> : id === 'calendar' ? <DeskCalendar3D faceRight={faceRight} /> : id === 'bookstand' ? <BookStand3D faceRight={faceRight} /> : id === 'note' ? null : children}</button>
       {id === 'note' && <div className="object-open note-preview">{children}</div>}
-      {viewport === 'mobile' && <button
-        type="button"
-        className="drag-handle"
-        aria-label={`Move ${labelFor(id)}. Use arrow keys; hold Shift for larger steps.`}
-        title="Drag or use arrow keys to move"
-        onPointerDown={(event: PointerEvent<HTMLButtonElement>) => controls.start(event)}
-        onKeyDown={handleKey}
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M2 12h20M9 5l3-3 3 3M9 19l3 3 3-3M5 9l-3 3 3 3M19 9l3 3-3 3" /></svg>
-      </button>}
     </motion.div>
   )
-}
-
-function labelFor(id: ItemId): string {
-  if (id === 'note') return 'the introduction note'
-  if (id === 'postcard') return 'the travel postcard'
-  if (id === 'duck') return 'the rubber duck'
-  if (id === 'clock') return 'the clock'
-  if (id === 'calendar') return 'the calendar'
-  if (id === 'notebook') return 'the My takes notebook'
-  return `polaroid ${id.slice(-2)}`
 }
 
 export function DeskLayout() {
@@ -181,9 +210,9 @@ export function DeskLayout() {
   const viewport = useViewport()
   const deskRef = useRef<HTMLElement>(null)
   const deskSize = useSize(deskRef)
-  const [layouts, setLayouts] = useState<Record<Viewport, Layout>>(() => ({ desktop: readLayout('desktop'), mobile: readLayout('mobile') }))
+  const [layouts, setLayouts] = useState<Record<Viewport, Layout | null>>(() => ({ desktop: readLayout('desktop'), mobile: readLayout('mobile') }))
   const [duckSqueaks, setDuckSqueaks] = useState(0)
-  const layout = layouts[viewport]
+  const layout = layouts[viewport] ?? defaultLayout(viewport)
   const lastOpened = useRef<ItemId | null>(null)
   const triggers = useRef<Partial<Record<ItemId, HTMLButtonElement | null>>>({})
 
@@ -196,16 +225,17 @@ export function DeskLayout() {
   }, [location.pathname])
 
   useEffect(() => {
+    if (!layouts[viewport]) return
     try { localStorage.setItem(storageKey(viewport), JSON.stringify(layout)) } catch { /* Private browsing can disable storage. */ }
   }, [layout, viewport])
 
   const update = (change: (current: Layout) => Layout) => {
-    setLayouts(old => ({ ...old, [viewport]: change(old[viewport]) }))
+    setLayouts(old => ({ ...old, [viewport]: change(old[viewport] ?? defaultLayout(viewport)) }))
   }
   const raise = (id: ItemId) => update(current => ({ ...current, order: [...current.order.filter(item => item !== id), id] }))
   const move = (id: ItemId, point: Point) => update(current => ({ ...current, positions: { ...current.positions, [id]: point } }))
   const open = (id: ItemId) => {
-    if (id === 'clock' || id === 'calendar') { raise(id); return }
+    if (id === 'clock' || id === 'calendar' || id === 'tv' || id === 'bookstand') { raise(id); return }
     if (id === 'duck') { squeakDuck(); setDuckSqueaks(count => count + 1); return }
     lastOpened.current = id
     navigate(id === 'note' ? '/about' : id === 'postcard' ? '/travels' : id === 'notebook' ? '/blog' : `/photos/${id.slice(-2)}`, { state: { fromDesk: true } })
@@ -223,13 +253,17 @@ export function DeskLayout() {
   }
   const photo = (id: ItemId) => photos.find(p => `photo-${p.id}` === id)!
 
+  useLayoutEffect(() => {
+    if (!layouts[viewport] && deskSize.width) reset()
+  }, [viewport, deskSize.width, deskSize.height, layouts])
+
   return <>
     <main className="desk" ref={deskRef} aria-label="Leonardo’s personal desk">
       <div className="desk-grain" aria-hidden="true" />
       <div className="desk-mat" aria-hidden="true" />
       {itemIds.map(id => <DeskItem
         key={id} id={id} point={layout.positions[id]} order={layout.order.indexOf(id)}
-        viewport={viewport} deskRef={deskRef} deskSize={deskSize}
+        viewport={viewport} deskSize={deskSize}
         onRaise={raise} onMove={move} onOpen={open}
         triggerRef={(item, button) => { triggers.current[item] = button }}
       >
@@ -237,7 +271,6 @@ export function DeskLayout() {
           <h1>Hey, I’m Leo.</h1>
           <span className="note-rule" aria-hidden="true" />
           <div className="ruled-copy">
-          <p className="note-intro">{profile.intro}</p>
           <p className="note-bio">{profile.biography}</p>
           <p className="note-bio">Currently building <a href="https://bananasplit.net" target="_blank" rel="noopener noreferrer" onPointerDown={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>bananasplit.net</a></p>
           </div>
@@ -261,7 +294,6 @@ export function DeskLayout() {
           <span className="postcard-open">Explore the map ↗</span>
         </div>}
       </DeskItem>)}
-      <p className="desk-hint">{viewport === 'mobile' ? 'Tap to explore. Use the handles to move.' : 'Drag to rearrange. Click to explore.'}</p>
       <button className="reset-button" type="button" onClick={reset}>Reset desk</button>
     </main>
     <Outlet />
