@@ -12,8 +12,9 @@ import { DeskClock3D } from './DeskClock3D'
 import { DeskCalendar3D } from './DeskCalendar3D'
 import { Television3D } from './Television3D'
 import { BookStand3D } from './BookStand3D'
+import { BananaLogo3D } from './BananaLogo3D'
 
-const storageKey = (viewport: Viewport) => `personal-desk-layout-${viewport === 'mobile' ? 'v3' : 'v2'}-${viewport}`
+const storageKey = (viewport: Viewport) => `personal-desk-layout-v3-${viewport}`
 let squeakContext: AudioContext | undefined
 
 function squeakDuck() {
@@ -79,7 +80,7 @@ type DeskItemProps = {
   onRaise: (id: ItemId) => void
   onMove: (id: ItemId, point: Point) => void
   onOpen: (id: ItemId) => void
-  triggerRef: (id: ItemId, button: HTMLButtonElement | null) => void
+  triggerRef: (id: ItemId, button: HTMLButtonElement | HTMLAnchorElement | null) => void
   children: ReactNode
 }
 
@@ -128,7 +129,7 @@ function DeskItem({ id, point, order, viewport, deskSize, onRaise, onMove, onOpe
       itemRef.current?.setPointerCapture(event.pointerId)
       setHeld(true)
       controls.start(event)
-    }, 300)
+    }, 80)
   }
 
   useLayoutEffect(() => {
@@ -142,7 +143,7 @@ function DeskItem({ id, point, order, viewport, deskSize, onRaise, onMove, onOpe
     onMove(id, next)
   }
 
-  const handleKey = (event: KeyboardEvent<HTMLButtonElement>) => {
+  const handleKey = (event: KeyboardEvent<HTMLElement>) => {
     const step = event.shiftKey ? 48 : 16
     const delta: Record<string, Point> = {
       ArrowLeft: { x: -step, y: 0 }, ArrowRight: { x: step, y: 0 },
@@ -186,11 +187,23 @@ function DeskItem({ id, point, order, viewport, deskSize, onRaise, onMove, onOpe
       onDragEnd={(_, info) => finishDrag(info.offset)}
       whileDrag={{ scale: 1.025, cursor: 'grabbing' }}
     >
-      <button
+      {id === 'banana' || id === 'github' ? <a
+        ref={node => triggerRef(id, node)}
+        className="object-open"
+        href={id === 'github' ? 'https://github.com/berteotti' : 'https://bananasplit.net'}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Visit ${id === 'github' ? 'Leo’s GitHub' : 'BananaSplit'} (opens in a new tab)`}
+        draggable={false}
+        onKeyDown={handleKey}
+        onClick={event => {
+          if (wasDragged.current) { event.preventDefault(); wasDragged.current = false }
+        }}
+      >{id === 'banana' ? <BananaLogo3D /> : <span className="github-disk" aria-hidden="true"><img src="/images/github.png" alt="" draggable={false} /></span>}</a> : <button
         ref={node => triggerRef(id, node)}
         type="button"
         className="object-open"
-        aria-label={id === 'tv' ? 'Television power' : id === 'duck' ? 'Squeak rubber duck' : id === 'note' ? 'Open about me note' : id === 'notebook' ? 'Open My takes notebook' : undefined}
+        aria-label={id === 'tv' ? 'Television power' : id === 'duck' ? 'Squeak rubber duck' : id === 'note' ? 'Open about me note' : id === 'notebook' ? 'Open My takes notebook' : id === 'projects' ? 'Open Projects folder' : undefined}
         aria-pressed={id === 'tv' ? tvOn : undefined}
         onKeyDown={handleKey}
         onClick={() => {
@@ -198,7 +211,7 @@ function DeskItem({ id, point, order, viewport, deskSize, onRaise, onMove, onOpe
           if (id === 'tv') setTvOn(value => !value)
           onOpen(id)
         }}
-      >{id === 'tv' ? <Television3D on={tvOn} faceRight={faceRight} /> : id === 'clock' ? <DeskClock3D faceRight={faceRight} /> : id === 'calendar' ? <DeskCalendar3D faceRight={faceRight} /> : id === 'bookstand' ? <BookStand3D faceRight={faceRight} /> : id === 'note' ? null : children}</button>
+      >{id === 'tv' ? <Television3D on={tvOn} faceRight={faceRight} /> : id === 'clock' ? <DeskClock3D faceRight={faceRight} /> : id === 'calendar' ? <DeskCalendar3D faceRight={faceRight} /> : id === 'bookstand' ? <BookStand3D faceRight={faceRight} /> : id === 'note' ? null : children}</button>}
       {id === 'note' && <div className="object-open note-preview">{children}</div>}
     </motion.div>
   )
@@ -214,7 +227,7 @@ export function DeskLayout() {
   const [duckSqueaks, setDuckSqueaks] = useState(0)
   const layout = layouts[viewport] ?? defaultLayout(viewport)
   const lastOpened = useRef<ItemId | null>(null)
-  const triggers = useRef<Partial<Record<ItemId, HTMLButtonElement | null>>>({})
+  const triggers = useRef<Partial<Record<ItemId, HTMLButtonElement | HTMLAnchorElement | null>>>({})
 
   useEffect(() => {
     if (location.pathname === '/' && lastOpened.current) {
@@ -238,7 +251,7 @@ export function DeskLayout() {
     if (id === 'clock' || id === 'calendar' || id === 'tv' || id === 'bookstand') { raise(id); return }
     if (id === 'duck') { squeakDuck(); setDuckSqueaks(count => count + 1); return }
     lastOpened.current = id
-    navigate(id === 'note' ? '/about' : id === 'postcard' ? '/travels' : id === 'notebook' ? '/blog' : `/photos/${id.slice(-2)}`, { state: { fromDesk: true } })
+    navigate(id === 'note' ? '/about' : id === 'postcard' ? '/travels' : id === 'notebook' ? '/blog' : id === 'projects' ? '/projects' : `/photos/${id.slice(-2)}`, { state: { fromDesk: true } })
   }
   const reset = () => {
     const desk = deskRef.current
@@ -277,6 +290,10 @@ export function DeskLayout() {
           <span className="open-prompt">Open note <span aria-hidden="true">→</span></span>
         </div>}
         {id === 'duck' && <RubberDuck3D squeak={duckSqueaks} />}
+        {id === 'projects' && <span className="projects-folder">
+          <span className="folder-icon" aria-hidden="true"><span className="folder-back" /><span className="folder-paper" /><span className="folder-front" /></span>
+          <span className="folder-label">Projects</span>
+        </span>}
         {id === 'notebook' && <div className="notebook-cover">
           <span className="notebook-label">My takes</span>
         </div>}
@@ -352,6 +369,30 @@ export function Blog({ posts = blogPosts }: { posts?: typeof blogPosts }) {
     <h2 className="notebook-heading">My takes</h2>
     {posts.length === 0 ? <p className="notebook-empty">there are no personal takes, for now</p> :
       <ol className="notebook-takes">{posts.map(post => <li key={post.id}>{post.title}</li>)}</ol>}
+  </PaperDialog>
+}
+
+export function Projects() {
+  return <PaperDialog title="Projects" paperClassName="projects-window">
+    <header className="projects-toolbar">
+      <span className="window-lights" aria-hidden="true"><i /><i /></span>
+      <h2>Projects</h2>
+      <span className="projects-view-icon" aria-hidden="true">▦</span>
+    </header>
+    <div className="projects-body">
+      <aside className="projects-sidebar"><p>Favorites</p><span className="projects-selected"><span aria-hidden="true">▰</span> Projects</span></aside>
+      <div className="projects-files">
+        <a className="project-file" href="https://bananasplit.net" target="_blank" rel="noopener noreferrer" aria-label="Visit BananaSplit (opens in a new tab)">
+          <img className="project-app-icon" src="/images/bananasplit.png" alt="" width="70" height="70" />
+          <span>BananaSplit</span><small>bananasplit.net ↗</small>
+        </a>
+        <a className="project-file" href="https://gymious.pt" target="_blank" rel="noopener noreferrer" aria-label="Visit Gymious (opens in a new tab)">
+          <img className="project-app-icon" src="/images/gymious.png" alt="" width="70" height="70" />
+          <span>Gymious</span><small>gymious.pt ↗</small>
+        </a>
+      </div>
+    </div>
+    <footer className="projects-status">2 items</footer>
   </PaperDialog>
 }
 

@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Route, Routes } from 'react-router'
-import { Blog, DeskLayout, Detail, NotFound } from './site'
+import { Blog, DeskLayout, Detail, NotFound, Projects } from './site'
 import './style.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -13,6 +13,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="photos/:photoId" element={<Detail kind="photo" />} />
           <Route path="travels" element={<Detail kind="travels" />} />
           <Route path="blog" element={<Blog />} />
+          <Route path="projects" element={<Projects />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

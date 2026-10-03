@@ -28,6 +28,9 @@ test('reset matches the desktop arrangement and places mobile TV and books in a 
     'photo-01': { width: 160, height: 203 },
     postcard: { width: 300, height: 181 },
     duck: { width: 120, height: 120 },
+    banana: { width: 100, height: 100 },
+    projects: { width: 105, height: 110 },
+    github: { width: 100, height: 100 },
     clock: { width: 220, height: 147 },
     calendar: { width: 220, height: 147 },
     notebook: { width: 210, height: 284 },
@@ -46,10 +49,10 @@ test('reset matches the desktop arrangement and places mobile TV and books in a 
   expect(layout.positions.bookstand.x).toBeLessThan(layout.positions.clock.x)
   const photo = positionFor(layout.positions['photo-01'], area, sizes['photo-01'])
   expect(photo.x).toBeGreaterThan(positionFor(layout.positions.note, area, sizes.note).x + sizes.note.width)
-  expect(Object.keys(layout.positions).sort()).toEqual(['bookstand', 'calendar', 'clock', 'duck', 'note', 'notebook', 'photo-01', 'postcard', 'tv'])
+  expect(Object.keys(layout.positions).sort()).toEqual(['banana', 'bookstand', 'calendar', 'clock', 'duck', 'github', 'note', 'notebook', 'photo-01', 'postcard', 'projects', 'tv'])
 
   const mobileArea = { width: 350, height: 2000 }
-  const mobileSizes = { ...sizes, 'photo-01': { width: 119, height: 151 }, duck: { width: 84, height: 84 }, clock: { width: 140, height: 93 }, calendar: { width: 140, height: 93 }, tv: { width: 159, height: 118 }, bookstand: { width: 140, height: 112 } }
+  const mobileSizes = { ...sizes, 'photo-01': { width: 119, height: 151 }, duck: { width: 84, height: 84 }, banana: { width: 63, height: 63 }, clock: { width: 140, height: 93 }, calendar: { width: 140, height: 93 }, tv: { width: 159, height: 118 }, bookstand: { width: 140, height: 112 } }
   const mobile = resetLayout('mobile', mobileArea, mobileSizes).positions
   const at = (id: keyof typeof mobile) => positionFor(mobile[id], mobileArea, mobileSizes[id])
   expect(at('calendar').y).toEqual(at('clock').y)
@@ -57,7 +60,13 @@ test('reset matches the desktop arrangement and places mobile TV and books in a 
   expect(at('note').y).toBeGreaterThan(at('clock').y + mobileSizes.clock.height)
   expect(at('photo-01').y).toBeGreaterThan(at('note').y + mobileSizes.note.height)
   expect(at('photo-01').x + mobileSizes['photo-01'].width).toBeLessThan(at('duck').x)
+  expect(at('banana').x + mobileSizes.banana.width).toBeCloseTo(at('duck').x)
+  expect(at('banana').x).toBeGreaterThanOrEqual(at('photo-01').x + mobileSizes['photo-01'].width)
+  expect(at('banana').y).toEqual(at('duck').y)
   expect(at('notebook').y).toBeGreaterThan(at('photo-01').y + mobileSizes['photo-01'].height)
+  expect(at('projects').x).toBeGreaterThan(at('notebook').x + mobileSizes.notebook.width)
+  expect(at('github').y).toBeGreaterThan(at('projects').y + mobileSizes.projects.height)
+  expect(at('github').y + mobileSizes.github.height).toBeLessThan(at('tv').y)
   expect(at('tv').y).toBeGreaterThan(at('notebook').y + mobileSizes.notebook.height)
   expect(at('bookstand').y).toEqual(at('tv').y)
   expect(at('tv').x + mobileSizes.tv.width).toBeLessThan(at('bookstand').x)
@@ -129,5 +138,32 @@ test('adding the book stand preserves saved positions and stacking order', () =>
     expect(restored.positions.note).toEqual(saved.positions.note)
     expect(restored.positions.bookstand).toEqual(defaultLayout(viewport).positions.bookstand)
     expect(restored.order).toEqual([...order, 'bookstand'])
+  }
+})
+
+test('adding GitHub preserves existing saved positions and stacking order', () => {
+  for (const viewport of ['desktop', 'mobile'] as const) {
+    const saved = defaultLayout(viewport)
+    saved.positions.note = { x: 0.2, y: 0.3 }
+    const order = saved.order.filter(id => id !== 'github')
+    const positions = Object.fromEntries(order.map(id => [id, saved.positions[id]]))
+    const restored = parseLayout(JSON.stringify({ positions, order }), viewport)
+    expect(restored.positions.note).toEqual(saved.positions.note)
+    expect(restored.positions.github).toEqual(defaultLayout(viewport).positions.github)
+    expect(restored.order).toEqual([...order, 'github'])
+  }
+})
+
+test('adding BananaSplit preserves saved desks and defaults to the left of the duck', () => {
+  for (const viewport of ['desktop', 'mobile'] as const) {
+    const saved = defaultLayout(viewport)
+    saved.positions.note = { x: 0.2, y: 0.3 }
+    const order = saved.order.filter(id => id !== 'banana')
+    const positions = Object.fromEntries(order.map(id => [id, saved.positions[id]]))
+    const restored = parseLayout(JSON.stringify({ positions, order }), viewport)
+    expect(restored.positions.note).toEqual(saved.positions.note)
+    expect(restored.positions.banana.x).toBeLessThan(restored.positions.duck.x)
+    expect(restored.positions.banana.y).toEqual(restored.positions.duck.y)
+    expect(restored.order).toEqual([...order, 'banana'])
   }
 })
