@@ -1,0 +1,40 @@
+# Builds the site on every push to main and publishes dist/ as a single commit on
+# the `build` branch. The Raspberry Pi serving leothe.dev polls that branch and
+# deploys new commits (see berteotti's web-pi repo: pi/pull-deploy.sh).
+name: Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun run build
+
+      - name: Publish dist/ to the build branch
+        run: |
+          echo "$GITHUB_SHA" > dist/version.txt
+          subject="$(git log -1 --format=%s)"
+          cd dist
+          git init -q -b build
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Build ${GITHUB_SHA::7}: $subject"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" build
