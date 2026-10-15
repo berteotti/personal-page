@@ -13,7 +13,9 @@ The page starts with clearly labeled sample content. Edit `src/content.ts` and r
 
 When deploying to a static host, configure its SPA fallback so requests such as `/about` and `/photos/01` serve `index.html`. Otherwise those direct links will return a server 404 before React loads.
 
-Deploy to Cloudflare Workers with the account and SPA fallback in `wrangler.jsonc`:
+Pushing to `main` deploys https://leothe.dev automatically: the `Build` workflow publishes `dist/` to the `build` branch, and the Raspberry Pi serving the site picks up new commits within a minute. `https://leothe.dev/version.txt` shows the deployed commit.
+
+Alternatively, deploy to Cloudflare Workers with the account and SPA fallback in `wrangler.jsonc`:
 
 ```sh
 bun run deploy
