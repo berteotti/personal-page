@@ -1,4 +1,6 @@
-export const itemIds = ['note', 'photo-01', 'postcard', 'duck', 'clock', 'calendar', 'notebook', 'tv', 'bookstand', 'banana', 'projects', 'github'] as const
+export const itemIds = ['note', 'photo-01', 'postcard', 'duck', 'clock', 'notebook', 'bookstand', 'banana', 'projects', 'github'] as const
+// Objects that were once on the desk; saved layouts drop them instead of resetting.
+const retiredIds = ['calendar', 'tv']
 export type ItemId = typeof itemIds[number]
 export type Point = { x: number; y: number }
 export type Size = { width: number; height: number }
@@ -11,15 +13,13 @@ const defaults: Record<Viewport, Layout> = {
       note: { x: 0.08, y: 0.62 },
       'photo-01': { x: 0.9, y: 0.34 },
       postcard: { x: 0.87, y: 0.83 },
-      duck: { x: 0.587, y: 0.07 },
-      banana: { x: 0.485, y: 0.07 },
-      projects: { x: 0.53, y: 0.88 },
-      github: { x: 0.40, y: 0.88 },
-      clock: { x: 1, y: 0.005 },
-      calendar: { x: 0, y: 0.02 },
-      notebook: { x: 0.55, y: 0.42 },
-      tv: { x: 0.215, y: 0.005 },
-      bookstand: { x: 0.787, y: 0.025 },
+      duck: { x: 0.419, y: 0.07 },
+      banana: { x: 0.316, y: 0.07 },
+      projects: { x: 0.737, y: 0.046 },
+      github: { x: 0.6, y: 0.07 },
+      clock: { x: 0.02, y: 0.005 },
+      notebook: { x: 0.5, y: 0.63 },
+      bookstand: { x: 0.985, y: 0.02 },
     },
     order: [...itemIds],
   },
@@ -32,11 +32,9 @@ const defaults: Record<Viewport, Layout> = {
       banana: { x: 0.61, y: 0.48 },
       projects: { x: 0.9, y: 0.61 },
       github: { x: 0.9, y: 0.70 },
-      clock: { x: 0.96, y: 0.017 },
-      calendar: { x: 0.04, y: 0.017 },
+      clock: { x: 0.04, y: 0.017 },
       notebook: { x: 0.48, y: 0.7 },
-      tv: { x: 0.17, y: 0.81 },
-      bookstand: { x: 0.83, y: 0.81 },
+      bookstand: { x: 0.96, y: 0.02 },
     },
     order: [...itemIds],
   },
@@ -58,11 +56,13 @@ export function resetLayout(viewport: Viewport, area: Size, sizes: Record<ItemId
 
   const gap = area.width * 0.11
   const edge = area.width * 0.025
-  const noteTop = 24 + Math.max(sizes.calendar.height, sizes.clock.height) + gap * 0.55
+  const backRow = Math.max(sizes.clock.height, sizes.bookstand.height)
+  const noteTop = 24 + backRow + gap * 0.55
   const photoTop = noteTop + sizes.note.height + gap
   const notebookTop = photoTop + Math.max(sizes['photo-01'].height, sizes.duck.height) + gap * 1.5
-  place('calendar', edge, 24)
-  place('clock', area.width - sizes.clock.width - edge, 24)
+  // The clock and the books stand on the same line at the back of the desk.
+  place('clock', edge, 24 + backRow - sizes.clock.height)
+  place('bookstand', area.width - sizes.bookstand.width - edge, 24 + backRow - sizes.bookstand.height)
   place('note', (area.width - sizes.note.width) / 2, noteTop)
   place('photo-01', area.width * 0.12, photoTop)
   place('duck', area.width - sizes.duck.width - area.width * 0.08, photoTop + gap / 2)
@@ -70,11 +70,8 @@ export function resetLayout(viewport: Viewport, area: Size, sizes: Record<ItemId
   place('notebook', edge + 8, notebookTop)
   place('projects', area.width - sizes.projects.width - edge - 8, notebookTop + gap)
   place('github', area.width - sizes.github.width - edge - 8, notebookTop + gap + sizes.projects.height + 24)
-  const tvTop = notebookTop + sizes.notebook.height + gap * 1.75
-  const rowInset = Math.min(area.width * 0.12, (area.width - sizes.tv.width - sizes.bookstand.width) / 3)
-  place('tv', rowInset, tvTop)
-  place('bookstand', area.width - sizes.bookstand.width - rowInset, tvTop)
-  place('postcard', (area.width - sizes.postcard.width) / 2, tvTop + Math.max(sizes.tv.height, sizes.bookstand.height) + gap * 3)
+  const linksBottom = notebookTop + gap + sizes.projects.height + 24 + sizes.github.height
+  place('postcard', (area.width - sizes.postcard.width) / 2, Math.max(notebookTop + sizes.notebook.height, linksBottom) + gap * 1.5)
   return layout
 }
 
@@ -99,6 +96,7 @@ export function parseLayout(value: string | null, viewport: Viewport): Layout {
     if (!parsed || typeof parsed !== 'object') return defaultLayout(viewport)
     const candidate = parsed as Partial<Layout>
     if (!candidate.positions || !candidate.order || !Array.isArray(candidate.order)) return defaultLayout(viewport)
+    candidate.order = candidate.order.filter(id => !retiredIds.includes(id))
     const savedIds = itemIds.filter(id => candidate.order?.includes(id))
     if (!['note', 'photo-01', 'postcard'].every(id => candidate.order?.includes(id as ItemId)) || candidate.order.length !== savedIds.length) return defaultLayout(viewport)
     const positions = defaultLayout(viewport).positions

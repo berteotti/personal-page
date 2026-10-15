@@ -22,7 +22,7 @@ test('old three-object layouts keep their positions when the duck is added', () 
   expect(restored.order).toEqual([...old.order, 'duck'])
 })
 
-test('reset matches the desktop arrangement and places mobile TV and books in a row', () => {
+test('reset matches the desktop arrangement and opens mobile with the clock and books in a row', () => {
   const sizes = {
     note: { width: 310, height: 650 },
     'photo-01': { width: 160, height: 203 },
@@ -32,31 +32,30 @@ test('reset matches the desktop arrangement and places mobile TV and books in a 
     projects: { width: 105, height: 110 },
     github: { width: 100, height: 100 },
     clock: { width: 220, height: 147 },
-    calendar: { width: 220, height: 147 },
     notebook: { width: 210, height: 284 },
-    tv: { width: 228, height: 169 },
     bookstand: { width: 220, height: 116 },
   }
   const area = { width: 768, height: 800 }
   const layout = resetLayout('desktop', area, sizes)
   expect(layout).toEqual(defaultLayout('desktop'))
-  expect(layout.positions.calendar).toEqual({ x: 0, y: 0.02 })
-  expect(layout.positions.clock).toEqual({ x: 1, y: 0.005 })
-  expect(layout.positions.tv.x).toBeGreaterThan(layout.positions.calendar.x)
-  expect(layout.positions.tv.x).toBeLessThan(layout.positions.duck.x)
-  expect(layout.positions.tv.y).toBeLessThan(layout.positions.note.y)
-  expect(layout.positions.bookstand.x).toBeGreaterThan(layout.positions.duck.x)
-  expect(layout.positions.bookstand.x).toBeLessThan(layout.positions.clock.x)
+  // One back row, left to right: clock, banana and duck, GitHub and Projects, books.
+  const backRow = ['clock', 'banana', 'duck', 'github', 'projects', 'bookstand'] as const
+  for (let i = 1; i < backRow.length; i++) {
+    expect(layout.positions[backRow[i]].x).toBeGreaterThan(layout.positions[backRow[i - 1]].x)
+    expect(layout.positions[backRow[i]].y).toBeLessThan(layout.positions.note.y)
+  }
+  expect(layout.positions.notebook.y).toBeGreaterThan(layout.positions.duck.y)
   const photo = positionFor(layout.positions['photo-01'], area, sizes['photo-01'])
   expect(photo.x).toBeGreaterThan(positionFor(layout.positions.note, area, sizes.note).x + sizes.note.width)
-  expect(Object.keys(layout.positions).sort()).toEqual(['banana', 'bookstand', 'calendar', 'clock', 'duck', 'github', 'note', 'notebook', 'photo-01', 'postcard', 'projects', 'tv'])
+  expect(Object.keys(layout.positions).sort()).toEqual(['banana', 'bookstand', 'clock', 'duck', 'github', 'note', 'notebook', 'photo-01', 'postcard', 'projects'])
 
   const mobileArea = { width: 350, height: 2000 }
-  const mobileSizes = { ...sizes, 'photo-01': { width: 119, height: 151 }, duck: { width: 84, height: 84 }, banana: { width: 63, height: 63 }, clock: { width: 140, height: 93 }, calendar: { width: 140, height: 93 }, tv: { width: 159, height: 118 }, bookstand: { width: 140, height: 112 } }
+  const mobileSizes = { ...sizes, 'photo-01': { width: 119, height: 151 }, duck: { width: 84, height: 84 }, banana: { width: 63, height: 63 }, clock: { width: 140, height: 93 }, bookstand: { width: 140, height: 112 } }
   const mobile = resetLayout('mobile', mobileArea, mobileSizes).positions
   const at = (id: keyof typeof mobile) => positionFor(mobile[id], mobileArea, mobileSizes[id])
-  expect(at('calendar').y).toEqual(at('clock').y)
-  expect(at('calendar').x + mobileSizes.calendar.width).toBeLessThan(at('clock').x)
+  expect(at('bookstand').y + mobileSizes.bookstand.height).toBeCloseTo(at('clock').y + mobileSizes.clock.height)
+  expect(at('clock').x + mobileSizes.clock.width).toBeLessThan(at('bookstand').x)
+  expect(at('note').y).toBeGreaterThan(at('bookstand').y + mobileSizes.bookstand.height)
   expect(at('note').y).toBeGreaterThan(at('clock').y + mobileSizes.clock.height)
   expect(at('photo-01').y).toBeGreaterThan(at('note').y + mobileSizes.note.height)
   expect(at('photo-01').x + mobileSizes['photo-01'].width).toBeLessThan(at('duck').x)
@@ -66,28 +65,23 @@ test('reset matches the desktop arrangement and places mobile TV and books in a 
   expect(at('notebook').y).toBeGreaterThan(at('photo-01').y + mobileSizes['photo-01'].height)
   expect(at('projects').x).toBeGreaterThan(at('notebook').x + mobileSizes.notebook.width)
   expect(at('github').y).toBeGreaterThan(at('projects').y + mobileSizes.projects.height)
-  expect(at('github').y + mobileSizes.github.height).toBeLessThan(at('tv').y)
-  expect(at('tv').y).toBeGreaterThan(at('notebook').y + mobileSizes.notebook.height)
-  expect(at('bookstand').y).toEqual(at('tv').y)
-  expect(at('tv').x + mobileSizes.tv.width).toBeLessThan(at('bookstand').x)
-  expect(at('postcard').y).toBeGreaterThan(at('tv').y + mobileSizes.tv.height)
-  expect(at('postcard').y).toBeGreaterThan(at('bookstand').y + mobileSizes.bookstand.height)
+  expect(at('postcard').y).toBeGreaterThan(at('notebook').y + mobileSizes.notebook.height)
+  expect(at('postcard').y).toBeGreaterThan(at('github').y + mobileSizes.github.height)
   for (const id of Object.keys(mobile) as (keyof typeof mobile)[]) {
     expect(at(id).x + mobileSizes[id].width).toBeLessThanOrEqual(mobileArea.width)
     expect(at(id).y + mobileSizes[id].height).toBeLessThanOrEqual(mobileArea.height)
   }
 })
 
-test('adding the television preserves existing saved positions and stacking order', () => {
+test('retiring the calendar and television keeps the rest of a saved desk', () => {
   for (const viewport of ['desktop', 'mobile'] as const) {
     const saved = defaultLayout(viewport)
     saved.positions.note = { x: 0.2, y: 0.3 }
-    const order = saved.order.filter(id => id !== 'tv')
-    const positions = Object.fromEntries(order.map(id => [id, saved.positions[id]]))
+    const order = [...saved.order, 'calendar', 'tv']
+    const positions = { ...saved.positions, calendar: { x: 0, y: 0 }, tv: { x: 0.2, y: 0 } }
     const restored = parseLayout(JSON.stringify({ positions, order }), viewport)
-    expect(restored.positions.note).toEqual(saved.positions.note)
-    expect(restored.positions.tv).toEqual(defaultLayout(viewport).positions.tv)
-    expect(restored.order).toEqual([...order, 'tv'])
+    expect(restored.positions).toEqual(saved.positions)
+    expect(restored.order).toEqual(saved.order)
   }
 })
 
@@ -102,17 +96,6 @@ test('adding the notebook preserves existing saved positions and stacking order'
     expect(restored.positions.notebook).toEqual(defaultLayout(viewport).positions.notebook)
     expect(restored.order).toEqual([...order, 'notebook'])
   }
-})
-
-test('adding the calendar preserves existing desk positions and stacking order', () => {
-  const saved = defaultLayout('desktop')
-  saved.positions.clock = { x: 0.28, y: 0.42 }
-  saved.order = saved.order.filter(id => id !== 'calendar')
-  const positions = Object.fromEntries(saved.order.map(id => [id, saved.positions[id]]))
-  const restored = parseLayout(JSON.stringify({ positions, order: saved.order }), 'desktop')
-  expect(restored.positions.clock).toEqual(saved.positions.clock)
-  expect(restored.positions.calendar).toEqual(defaultLayout('desktop').positions.calendar)
-  expect(restored.order).toEqual([...saved.order, 'calendar'])
 })
 
 test('adding the clock preserves saved three- and four-object desks', () => {

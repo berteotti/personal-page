@@ -9,8 +9,6 @@ import { defaultLayout, itemIds, normalizePosition, parseLayout, positionFor, re
 import type { ItemId, Layout, Point, Size, Viewport } from './layout'
 import { RubberDuck3D } from './RubberDuck3D'
 import { DeskClock3D } from './DeskClock3D'
-import { DeskCalendar3D } from './DeskCalendar3D'
-import { Television3D } from './Television3D'
 import { BookStand3D } from './BookStand3D'
 import { BananaLogo3D } from './BananaLogo3D'
 
@@ -93,7 +91,6 @@ function DeskItem({ id, point, order, viewport, deskSize, onRaise, onMove, onOpe
   const wasDragged = useRef(false)
   const hold = useRef<{ timer?: ReturnType<typeof setTimeout>; origin?: Point; active: boolean }>({ active: false })
   const [held, setHeld] = useState(false)
-  const [tvOn, setTvOn] = useState(false)
   const [dragSide, setDragSide] = useState<boolean | null>(null)
   const position = positionFor(point, deskSize, itemSize)
   const limit = positionFor({ x: 1, y: 1 }, deskSize, itemSize)
@@ -182,7 +179,7 @@ function DeskItem({ id, point, order, viewport, deskSize, onRaise, onMove, onOpe
       onContextMenu={event => { if (viewport === 'mobile') event.preventDefault() }}
       onDragStart={() => { wasDragged.current = true; onRaise(id) }}
       onDrag={(_, info) => {
-        if (id === 'clock' || id === 'calendar' || id === 'tv' || id === 'bookstand') setDragSide(position.x + info.offset.x + itemSize.width / 2 < deskSize.width / 2)
+        if (id === 'clock' || id === 'bookstand') setDragSide(position.x + info.offset.x + itemSize.width / 2 < deskSize.width / 2)
       }}
       onDragEnd={(_, info) => finishDrag(info.offset)}
       whileDrag={{ scale: 1.025, cursor: 'grabbing' }}
@@ -203,15 +200,13 @@ function DeskItem({ id, point, order, viewport, deskSize, onRaise, onMove, onOpe
         ref={node => triggerRef(id, node)}
         type="button"
         className="object-open"
-        aria-label={id === 'tv' ? 'Television power' : id === 'duck' ? 'Squeak rubber duck' : id === 'note' ? 'Open about me note' : id === 'notebook' ? 'Open My takes notebook' : id === 'projects' ? 'Open Projects folder' : undefined}
-        aria-pressed={id === 'tv' ? tvOn : undefined}
+        aria-label={id === 'duck' ? 'Squeak rubber duck' : id === 'note' ? 'Open about me note' : id === 'notebook' ? 'Open My takes notebook' : id === 'projects' ? 'Open Projects folder' : undefined}
         onKeyDown={handleKey}
         onClick={() => {
           if (wasDragged.current) { wasDragged.current = false; return }
-          if (id === 'tv') setTvOn(value => !value)
           onOpen(id)
         }}
-      >{id === 'tv' ? <Television3D on={tvOn} faceRight={faceRight} /> : id === 'clock' ? <DeskClock3D faceRight={faceRight} /> : id === 'calendar' ? <DeskCalendar3D faceRight={faceRight} /> : id === 'bookstand' ? <BookStand3D faceRight={faceRight} /> : id === 'note' ? null : children}</button>}
+      >{id === 'clock' ? <DeskClock3D faceRight={faceRight} /> : id === 'bookstand' ? <BookStand3D faceRight={faceRight} /> : id === 'note' ? null : children}</button>}
       {id === 'note' && <div className="object-open note-preview">{children}</div>}
     </motion.div>
   )
@@ -248,7 +243,7 @@ export function DeskLayout() {
   const raise = (id: ItemId) => update(current => ({ ...current, order: [...current.order.filter(item => item !== id), id] }))
   const move = (id: ItemId, point: Point) => update(current => ({ ...current, positions: { ...current.positions, [id]: point } }))
   const open = (id: ItemId) => {
-    if (id === 'clock' || id === 'calendar' || id === 'tv' || id === 'bookstand') { raise(id); return }
+    if (id === 'clock' || id === 'bookstand') { raise(id); return }
     if (id === 'duck') { squeakDuck(); setDuckSqueaks(count => count + 1); return }
     lastOpened.current = id
     navigate(id === 'note' ? '/about' : id === 'postcard' ? '/travels' : id === 'notebook' ? '/blog' : id === 'projects' ? '/projects' : `/photos/${id.slice(-2)}`, { state: { fromDesk: true } })
@@ -364,11 +359,31 @@ export function Detail({ kind }: { kind: 'about' | 'photo' | 'travels' }) {
   return <PaperDialog title={photo.caption}><div className="detail-content photo-detail"><img src={photo.src} alt={photo.alt} /><h2>{photo.caption}</h2>{photo.description && <p>{photo.description}</p>}</div></PaperDialog>
 }
 
+const takesPerPage = 6
+
 export function Blog({ posts = blogPosts }: { posts?: typeof blogPosts }) {
+  const overflow = posts.slice(takesPerPage)
   return <PaperDialog title="My takes" paperClassName="notebook-paper">
-    <h2 className="notebook-heading">My takes</h2>
-    {posts.length === 0 ? <p className="notebook-empty">there are no personal takes, for now</p> :
-      <ol className="notebook-takes">{posts.map(post => <li key={post.id}>{post.title}</li>)}</ol>}
+    <div className="notebook-spread">
+      <section className="notebook-page notebook-page--left">
+        <h2 className="notebook-heading">My takes</h2>
+        <div className="ruled-copy">
+          {posts.length === 0 ? <p className="notebook-empty">there are no personal takes, for now</p> :
+            <ol className="notebook-takes">{posts.slice(0, takesPerPage).map(post => <li key={post.id}>{post.title}</li>)}</ol>}
+        </div>
+        <span className="notebook-folio" aria-hidden="true">1</span>
+      </section>
+      <section className="notebook-page notebook-page--right" aria-hidden={overflow.length ? undefined : true}>
+        <span className="notebook-heading-space" />
+        <div className="ruled-copy">
+          {overflow.length > 0 && <ol className="notebook-takes" start={takesPerPage + 1}>{overflow.map(post => <li key={post.id}>{post.title}</li>)}</ol>}
+        </div>
+        <span className="notebook-stain" aria-hidden="true" />
+        <span className="notebook-folio" aria-hidden="true">2</span>
+      </section>
+    </div>
+    <span className="notebook-ribbon" aria-hidden="true" />
+    <span className="notebook-band" aria-hidden="true" />
   </PaperDialog>
 }
 
