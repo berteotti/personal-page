@@ -7,7 +7,8 @@
     "build": "tsc -b && vite build",
     "deploy": "bun run build && npx --yes wrangler deploy",
     "preview": "vite preview",
-    "test": "bun test"
+    "test": "bun test",
+    "deploy:edge": "bun run build && echo \"$(git rev-parse HEAD)\" > dist/version.txt && npx --yes wrangler deploy --env edge"
   },
   "dependencies": {
     "motion": "^12.0.0",

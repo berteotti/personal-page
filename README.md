@@ -15,6 +15,8 @@ When deploying to a static host, configure its SPA fallback so requests such as 
 
 Pushing to `main` deploys https://leothe.dev automatically: the `Build` workflow publishes `dist/` to the `build` branch, and the Raspberry Pi serving the site picks up new commits within a minute. `https://leothe.dev/version.txt` shows the deployed commit.
 
+While the Pi is unavailable, leothe.dev can be served from Cloudflare's edge instead: `bun run deploy:edge` deploys the `personal-page-edge` Worker with routes on `leothe.dev/*` and `www.leothe.dev/*`, which take precedence over the tunnel (no DNS changes). Pushes to `main` don't update it; re-run the command. Switch back to the Pi with `bunx wrangler delete --env edge`.
+
 Alternatively, deploy to Cloudflare Workers with the account and SPA fallback in `wrangler.jsonc`:
 
 ```sh

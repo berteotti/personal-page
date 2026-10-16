@@ -6,5 +6,18 @@
   "assets": {
     "directory": "./dist",
     "not_found_handling": "single-page-application"
+  },
+  "env": {
+    // Serve leothe.dev from Cloudflare's edge instead of the Raspberry Pi.
+    // Routes take precedence over the tunnel's DNS records, so nothing in DNS
+    // changes. Switch on:  bun run deploy:edge
+    // Switch back to Pi:   bunx wrangler delete --env edge
+    "edge": {
+      "workers_dev": false,
+      "routes": [
+        { "pattern": "leothe.dev/*", "zone_name": "leothe.dev" },
+        { "pattern": "www.leothe.dev/*", "zone_name": "leothe.dev" }
+      ]
+    }
   }
 }
