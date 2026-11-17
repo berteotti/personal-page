@@ -1,6 +1,8 @@
-# Builds the site on every push to main and publishes dist/ as a single commit on
-# the `build` branch. The Raspberry Pi serving leothe.dev polls that branch and
-# deploys new commits (see berteotti's web-pi repo: pi/pull-deploy.sh).
+# Builds the site on every push to main and deploys it to the personal-page-edge
+# Cloudflare Worker, which serves leothe.dev (needs the CLOUDFLARE_API_TOKEN
+# repository secret). It also publishes dist/ as a single commit on the `build`
+# branch for the Raspberry Pi fallback, which polls that branch (see berteotti's
+# web-pi repo: pi/pull-deploy.sh).
 name: Build
 
 on:
@@ -27,9 +29,15 @@ jobs:
 
       - run: bun run build
 
+      - run: echo "$GITHUB_SHA" > dist/version.txt
+
+      - name: Deploy dist/ to the personal-page-edge Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx --yes wrangler@4.164.0 deploy --env edge
+
       - name: Publish dist/ to the build branch
         run: |
-          echo "$GITHUB_SHA" > dist/version.txt
           subject="$(git log -1 --format=%s)"
           cd dist
           git init -q -b build

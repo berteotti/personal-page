@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "deploy": "bun run build && npx --yes wrangler deploy",
+    "deploy": "bun run deploy:edge",
     "preview": "vite preview",
     "test": "bun test",
     "deploy:edge": "bun run build && echo \"$(git rev-parse HEAD)\" > dist/version.txt && npx --yes wrangler deploy --env edge"

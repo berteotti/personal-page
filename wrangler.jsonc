@@ -10,8 +10,10 @@
   "env": {
     // Serve leothe.dev from Cloudflare's edge instead of the Raspberry Pi.
     // Routes take precedence over the tunnel's DNS records, so nothing in DNS
-    // changes. Switch on:  bun run deploy:edge
-    // Switch back to Pi:   bunx wrangler delete --env edge
+    // changes. The Build workflow deploys this env on every push to main, and
+    // `bun run deploy` deploys it by hand. Switch back to the Pi: remove the
+    // deploy step from .github/workflows/build.yml, then run
+    // bunx wrangler delete --env edge
     "edge": {
       "workers_dev": false,
       "routes": [
