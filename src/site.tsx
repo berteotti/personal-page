@@ -347,10 +347,9 @@ export function Detail({ kind }: { kind: 'about' | 'photo' | 'travels' }) {
     <p className="detail-kicker">A note from the desk</p>
     <h2>Hey, I’m Leo.</h2>
     <div className="ruled-copy">
-    <p className="detail-lead">I’m a software engineer who likes creating new products, playing games, trying different sports, and going to the gym.</p>
-    <p>In this new age of AI, I’m leaning toward becoming an artist, creating new and interesting products that vibe with my current needs, inspiration, and view of the world.</p>
-    <p>That’s why I’m currently building <a href="https://bananasplit.net" target="_blank" rel="noopener noreferrer">bananasplit.net</a>.</p>
-    <p>I’m a curious person who likes to travel, thanks to my mixed cultural background. Beyond computer stuff, I like learning more about history and science.</p>
+    <p className="detail-lead">I’m a software engineer who loves building products, playing games, trying different sports, and going to the gym.</p>
+    <p>In this new age of AI, I’m moving toward being an artist: someone who makes new and interesting products shaped by my needs, my inspirations, and how I see the world. Right now, that’s <a href="https://bananasplit.net" target="_blank" rel="noopener noreferrer">bananasplit.net</a>.</p>
+    <p>My mixed cultural background made me curious and gave me a love of travel. Outside of tech, I enjoy learning about history and science.</p>
     </div>
   </div></PaperDialog>
   if (kind === 'travels') return <PaperDialog title="Places I’ve been" paperClassName="travels-paper"><div className="detail-content travels-detail"><p className="detail-kicker">Postcards from the world · {String(countries.length).padStart(2, '0')} countries</p><h2>Places I’ve been</h2><p className="map-intro">A few places that have become a part of my story.</p><TravelMap /><section className="passport-collection" aria-labelledby="passport-title"><h3 id="passport-title">A passport full of memories</h3><CountryStamps /></section></div></PaperDialog>
